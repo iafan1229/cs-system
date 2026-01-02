@@ -70,7 +70,7 @@ export const scheduleService = {
 
   generateLink: async (
     id: number,
-    email?: string
+    email: string
   ): Promise<{ token: string; expiresAt: string; bookingUrl: string }> => {
     const response = await apiClient.post<{
       token: string;

@@ -10,6 +10,7 @@ import {
   Request,
   Query,
   ParseIntPipe,
+  BadRequestException,
 } from '@nestjs/common';
 import type { RequestWithUser } from '../common/interfaces/request-with-user.interface';
 import { SchedulesService } from './schedules.service';
@@ -74,10 +75,13 @@ export class SchedulesController {
     @Param('id', ParseIntPipe) id: number,
     @Body('email') email?: string,
   ) {
+    if (!email || !email.includes('@')) {
+      throw new BadRequestException('상담희망자 이메일은 필수입니다.');
+    }
     return this.schedulesService.generateLink(
       id,
       req.user.id,
-      email || req.user.email,
+      email,
     );
   }
 }
