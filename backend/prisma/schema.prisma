@@ -32,9 +32,9 @@ model Schedule {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reservations  Reservation[]
-  accessTokens  AccessToken[]
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reservations        Reservation[]
+  accessTokenSchedules AccessTokenSchedule[]
 
   @@index([userId])
   @@index([startTime])
@@ -72,14 +72,28 @@ model ConsultationRecord {
 model AccessToken {
   id             Int      @id @default(autoincrement())
   token          String   @unique
-  scheduleId     Int
   recipientEmail String?  // 상담희망자 이메일
   expiresAt      DateTime
   used           Boolean  @default(false)
   createdAt      DateTime @default(now())
 
-  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  schedules AccessTokenSchedule[]
 
   @@index([token])
   @@map("access_tokens")
+}
+
+model AccessTokenSchedule {
+  id            Int      @id @default(autoincrement())
+  accessTokenId Int
+  scheduleId    Int
+  createdAt     DateTime @default(now())
+
+  accessToken AccessToken @relation(fields: [accessTokenId], references: [id], onDelete: Cascade)
+  schedule    Schedule    @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@unique([accessTokenId, scheduleId])
+  @@index([accessTokenId])
+  @@index([scheduleId])
+  @@map("access_token_schedules")
 }

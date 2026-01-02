@@ -79,5 +79,18 @@ export const scheduleService = {
     }>(`/admin/schedules/${id}/generate-link`, { email });
     return response.data;
   },
+
+  generateLinkBatch: async (
+    scheduleIds: number[],
+    email: string
+  ): Promise<{ token: string; expiresAt: string; bookingUrl: string; scheduleCount: number }> => {
+    const response = await apiClient.post<{
+      token: string;
+      expiresAt: string;
+      bookingUrl: string;
+      scheduleCount: number;
+    }>('/admin/schedules/generate-link-batch', { scheduleIds, email });
+    return response.data;
+  },
 };
 

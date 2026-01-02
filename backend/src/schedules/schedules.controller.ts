@@ -84,4 +84,23 @@ export class SchedulesController {
       email,
     );
   }
+
+  @Post('generate-link-batch')
+  async generateLinkBatch(
+    @Request() req: RequestWithUser,
+    @Body('scheduleIds') scheduleIds: number[],
+    @Body('email') email?: string,
+  ) {
+    if (!email || !email.includes('@')) {
+      throw new BadRequestException('상담희망자 이메일은 필수입니다.');
+    }
+    if (!scheduleIds || scheduleIds.length === 0) {
+      throw new BadRequestException('최소 하나의 스케줄을 선택해야 합니다.');
+    }
+    return this.schedulesService.generateLinkBatch(
+      scheduleIds,
+      req.user.id,
+      email,
+    );
+  }
 }

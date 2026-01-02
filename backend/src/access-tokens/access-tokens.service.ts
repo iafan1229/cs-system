@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
@@ -24,25 +28,55 @@ export class AccessTokensService {
   }
 
   async generateToken(scheduleId: number, userEmail: string) {
-    const schedule = await this.prisma.schedule.findUnique({
-      where: { id: scheduleId },
+    return this.generateTokensForSchedules([scheduleId], userEmail);
+  }
+
+  async generateTokensForSchedules(scheduleIds: number[], userEmail: string) {
+    if (scheduleIds.length === 0) {
+      throw new BadRequestException('At least one schedule is required');
+    }
+
+    // 모든 스케줄 조회 및 검증
+    const schedules = await this.prisma.schedule.findMany({
+      where: { id: { in: scheduleIds } },
       include: { user: true },
+      orderBy: { startTime: 'asc' },
     });
 
-    if (!schedule) {
-      throw new NotFoundException(`Schedule with ID ${scheduleId} not found`);
+    if (schedules.length !== scheduleIds.length) {
+      throw new NotFoundException('Some schedules not found');
+    }
+
+    // 모든 스케줄이 같은 상담사(userId)인지 확인
+    const userIds = [...new Set(schedules.map((s) => s.userId))];
+    if (userIds.length > 1) {
+      throw new BadRequestException(
+        'All schedules must belong to the same counselor',
+      );
     }
 
     const token = uuidv4();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7일 후 만료
 
+    // AccessToken 생성 및 여러 스케줄 연결
     const accessToken = await this.prisma.accessToken.create({
       data: {
         token,
-        scheduleId,
-        recipientEmail: userEmail, // 상담희망자 이메일 저장
+        recipientEmail: userEmail,
         expiresAt,
+        schedules: {
+          create: scheduleIds.map((scheduleId) => ({
+            scheduleId,
+          })),
+        },
+      },
+      include: {
+        schedules: {
+          include: {
+            schedule: true,
+          },
+        },
       },
     });
 
@@ -51,24 +85,35 @@ export class AccessTokensService {
       this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
     const bookingUrl = `${frontendUrl}/booking?token=${token}`;
 
-    await this.sendEmail(userEmail, bookingUrl, schedule);
+    await this.sendEmail(userEmail, bookingUrl, schedules);
 
     return {
       token: accessToken.token,
       expiresAt: accessToken.expiresAt,
       bookingUrl,
+      scheduleCount: schedules.length,
     };
   }
 
   private async sendEmail(
     to: string,
     bookingUrl: string,
-    schedule: { startTime: Date | string },
+    schedules: Array<{ startTime: Date | string; endTime: Date | string }>,
   ): Promise<void> {
-    const startTime =
-      schedule.startTime instanceof Date
-        ? schedule.startTime
-        : new Date(schedule.startTime);
+    // 스케줄 목록 포맷팅
+    const scheduleList = schedules
+      .map((schedule) => {
+        const startTime =
+          schedule.startTime instanceof Date
+            ? schedule.startTime
+            : new Date(schedule.startTime);
+        const endTime =
+          schedule.endTime instanceof Date
+            ? schedule.endTime
+            : new Date(schedule.endTime);
+        return `<li>${startTime.toLocaleString('ko-KR')} ~ ${endTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</li>`;
+      })
+      .join('');
 
     const emailHost = this.configService.get<string>('EMAIL_HOST');
     const emailUser = this.configService.get<string>('EMAIL_USER');
@@ -83,7 +128,20 @@ export class AccessTokensService {
         this.configService.get<string>('EMAIL_FROM') || 'noreply@example.com',
       );
       console.log('Subject: 상담 예약 신청 링크');
-      console.log('상담 시간:', startTime.toLocaleString('ko-KR'));
+      console.log('상담 가능한 시간:');
+      schedules.forEach((schedule) => {
+        const startTime =
+          schedule.startTime instanceof Date
+            ? schedule.startTime
+            : new Date(schedule.startTime);
+        const endTime =
+          schedule.endTime instanceof Date
+            ? schedule.endTime
+            : new Date(schedule.endTime);
+        console.log(
+          `  - ${startTime.toLocaleString('ko-KR')} ~ ${endTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`,
+        );
+      });
       console.log('Booking URL:', bookingUrl);
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log(
@@ -99,7 +157,10 @@ export class AccessTokensService {
       html: `
         <h2>상담 예약 신청 링크</h2>
         <p>아래 링크를 통해 상담을 예약하실 수 있습니다.</p>
-        <p><strong>상담 시간:</strong> ${startTime.toLocaleString('ko-KR')}</p>
+        <p><strong>상담 가능한 시간:</strong></p>
+        <ul>
+          ${scheduleList}
+        </ul>
         <p><a href="${bookingUrl}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">예약하기</a></p>
         <p>또는 아래 URL을 복사하여 사용하세요:</p>
         <p>${bookingUrl}</p>
@@ -129,11 +190,15 @@ export class AccessTokensService {
     const accessToken = await this.prisma.accessToken.findUnique({
       where: { token },
       include: {
-        schedule: {
+        schedules: {
           include: {
-            _count: {
-              select: {
-                reservations: true,
+            schedule: {
+              include: {
+                _count: {
+                  select: {
+                    reservations: true,
+                  },
+                },
               },
             },
           },

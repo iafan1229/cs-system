@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { format, parseISO, addDays, addMinutes } from "date-fns";
+import { format, parseISO, addMinutes } from "date-fns";
 import { Link } from "react-router-dom";
 import { scheduleService, type Schedule } from "../../services/scheduleService";
 import { Button } from "../../components/Button";
@@ -14,15 +14,13 @@ export const SchedulesPage = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [isBatchEmailModalOpen, setIsBatchEmailModalOpen] = useState(false);
   const [emailInput, setEmailInput] = useState("");
+  const [selectedScheduleIds, setSelectedScheduleIds] = useState<number[]>([]);
   const [pendingSchedule, setPendingSchedule] = useState<Schedule | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [, setSelectedSchedule] = useState<Schedule | null>(null);
   const [generatedLink, setGeneratedLink] = useState<string>("");
-  const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [endDate, setEndDate] = useState(
-    format(addDays(new Date(), 7), "yyyy-MM-dd")
-  );
 
   const [formData, setFormData] = useState({
     startTime: "",
@@ -32,12 +30,12 @@ export const SchedulesPage = () => {
 
   useEffect(() => {
     loadSchedules();
-  }, [startDate, endDate]);
+  }, []);
 
   const loadSchedules = async () => {
     try {
       setLoading(true);
-      const data = await scheduleService.getAll(startDate, endDate);
+      const data = await scheduleService.getAll();
       setSchedules(data);
     } catch (error) {
       console.error("Failed to load schedules:", error);
@@ -139,6 +137,46 @@ export const SchedulesPage = () => {
     }
   };
 
+  const handleToggleScheduleSelection = (scheduleId: number) => {
+    setSelectedScheduleIds((prev) =>
+      prev.includes(scheduleId)
+        ? prev.filter((id) => id !== scheduleId)
+        : [...prev, scheduleId]
+    );
+  };
+
+  const handleBatchEmail = () => {
+    if (selectedScheduleIds.length === 0) {
+      alert("이메일을 보낼 스케줄을 선택해주세요.");
+      return;
+    }
+    setIsBatchEmailModalOpen(true);
+  };
+
+  const handleConfirmBatchEmail = async () => {
+    if (!emailInput || !emailInput.includes("@")) {
+      alert("올바른 이메일 주소를 입력해주세요.");
+      return;
+    }
+
+    if (selectedScheduleIds.length === 0) return;
+
+    try {
+      const result = await scheduleService.generateLinkBatch(
+        selectedScheduleIds,
+        emailInput
+      );
+      setGeneratedLink(result.bookingUrl);
+      setIsLinkModalOpen(true);
+      setIsBatchEmailModalOpen(false);
+      setEmailInput("");
+      setSelectedScheduleIds([]);
+      alert(`${result.scheduleCount}개의 스케줄에 대한 링크가 생성되었습니다.`);
+    } catch (error: any) {
+      alert(error.response?.data?.message || "링크 생성에 실패했습니다.");
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     alert("링크가 클립보드에 복사되었습니다.");
@@ -150,28 +188,43 @@ export const SchedulesPage = () => {
     <div className='px-4 py-6'>
       <div className='flex justify-between items-center mb-6'>
         <h2 className='text-2xl font-bold'>스케줄 관리</h2>
-        <Button onClick={() => setIsCreateModalOpen(true)}>스케줄 생성</Button>
-      </div>
-
-      <div className='mb-4 flex gap-4'>
-        <Input
-          type='date'
-          label='시작 날짜'
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-        />
-        <Input
-          type='date'
-          label='종료 날짜'
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-        />
+        <div className='flex gap-2'>
+          <Button
+            variant='secondary'
+            onClick={handleBatchEmail}
+            disabled={selectedScheduleIds.length === 0}
+          >
+            선택한 스케줄 일괄 발송
+            {selectedScheduleIds.length > 0 &&
+              ` (${selectedScheduleIds.length})`}
+          </Button>
+          <Button onClick={() => setIsCreateModalOpen(true)}>
+            스케줄 생성
+          </Button>
+        </div>
       </div>
 
       <div className='bg-white shadow rounded-lg overflow-hidden'>
         <table className='min-w-full divide-y divide-gray-200'>
           <thead className='bg-gray-50'>
             <tr>
+              <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12'>
+                <input
+                  type='checkbox'
+                  checked={
+                    schedules.length > 0 &&
+                    selectedScheduleIds.length === schedules.length
+                  }
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedScheduleIds(schedules.map((s) => s.id));
+                    } else {
+                      setSelectedScheduleIds([]);
+                    }
+                  }}
+                  className='rounded border-gray-300'
+                />
+              </th>
               <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
                 날짜/시간
               </th>
@@ -186,6 +239,14 @@ export const SchedulesPage = () => {
           <tbody className='bg-white divide-y divide-gray-200'>
             {schedules.map((schedule) => (
               <tr key={schedule.id}>
+                <td className='px-6 py-4 whitespace-nowrap'>
+                  <input
+                    type='checkbox'
+                    checked={selectedScheduleIds.includes(schedule.id)}
+                    onChange={() => handleToggleScheduleSelection(schedule.id)}
+                    className='rounded border-gray-300'
+                  />
+                </td>
                 <td className='px-6 py-4 whitespace-nowrap'>
                   <div className='text-sm font-medium text-gray-900'>
                     {format(parseISO(schedule.startTime), "yyyy-MM-dd HH:mm")}
@@ -401,6 +462,44 @@ export const SchedulesPage = () => {
           />
           <p className='text-sm text-gray-500'>
             입력하신 이메일로 상담 신청 링크가 발송됩니다.
+          </p>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isBatchEmailModalOpen}
+        onClose={() => {
+          setIsBatchEmailModalOpen(false);
+          setEmailInput("");
+        }}
+        title='여러 스케줄 일괄 이메일 발송'
+        footer={
+          <>
+            <Button
+              variant='secondary'
+              onClick={() => {
+                setIsBatchEmailModalOpen(false);
+                setEmailInput("");
+              }}
+            >
+              취소
+            </Button>
+            <Button onClick={handleConfirmBatchEmail}>확인</Button>
+          </>
+        }
+      >
+        <div className='space-y-4'>
+          <Input
+            type='email'
+            label='상담희망자 이메일'
+            value={emailInput}
+            onChange={(e) => setEmailInput(e.target.value)}
+            placeholder='example@email.com'
+            required
+          />
+          <p className='text-sm text-gray-500'>
+            선택한 {selectedScheduleIds.length}개의 스케줄에 대한 링크가 하나의
+            이메일로 발송됩니다.
           </p>
         </div>
       </Modal>

@@ -22,8 +22,11 @@ export class ReservationsService {
       throw new BadRequestException('Invalid or expired token');
     }
 
-    // 스케줄 ID 일치 확인
-    if (accessToken.scheduleId !== createReservationDto.scheduleId) {
+    // 스케줄 ID가 토큰에 연결된 스케줄 중 하나인지 확인
+    const scheduleIds = accessToken.schedules.map(
+      (ats) => ats.schedule.id,
+    );
+    if (!scheduleIds.includes(createReservationDto.scheduleId)) {
       throw new BadRequestException('Schedule ID does not match token');
     }
 
@@ -84,10 +87,19 @@ export class ReservationsService {
       throw new BadRequestException('Invalid or expired token');
     }
 
+    // 토큰에 연결된 모든 스케줄 ID 가져오기
+    const scheduleIds = accessToken.schedules.map(
+      (ats) => ats.schedule.id,
+    );
+
+    if (scheduleIds.length === 0) {
+      throw new BadRequestException('No schedules found for this token');
+    }
+
     // 예약 가능한 스케줄 조회 (현재 예약 수 < 최대 정원)
     const schedules = await this.prisma.schedule.findMany({
       where: {
-        id: accessToken.scheduleId,
+        id: { in: scheduleIds },
       },
       include: {
         _count: {

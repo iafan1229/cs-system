@@ -213,4 +213,19 @@ export class SchedulesService {
     const schedule = await this.findOne(scheduleId, userId);
     return this.accessTokensService.generateToken(scheduleId, email);
   }
+
+  async generateLinkBatch(
+    scheduleIds: number[],
+    userId: number,
+    email: string,
+  ) {
+    // 모든 스케줄이 현재 사용자의 것인지 확인
+    for (const scheduleId of scheduleIds) {
+      await this.findOne(scheduleId, userId);
+    }
+    return this.accessTokensService.generateTokensForSchedules(
+      scheduleIds,
+      email,
+    );
+  }
 }
