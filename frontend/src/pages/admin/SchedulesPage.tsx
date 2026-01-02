@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { format, parseISO, addDays } from 'date-fns';
+import { format, parseISO, addDays, addMinutes } from 'date-fns';
 import { scheduleService, type Schedule } from '../../services/scheduleService';
 import { Button } from '../../components/Button';
 import { Modal } from '../../components/Modal';
@@ -39,6 +39,19 @@ export const SchedulesPage = () => {
       console.error('Failed to load schedules:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStartTimeChange = (startTime: string) => {
+    if (startTime) {
+      // 시작 시간이 선택되면 종료 시간을 자동으로 30분 후로 설정
+      const startDate = new Date(startTime);
+      const endDate = addMinutes(startDate, 30);
+      // datetime-local 형식으로 변환 (YYYY-MM-DDTHH:mm)
+      const endTime = format(endDate, "yyyy-MM-dd'T'HH:mm");
+      setFormData({ ...formData, startTime, endTime });
+    } else {
+      setFormData({ ...formData, startTime, endTime: '' });
     }
   };
 
@@ -178,15 +191,16 @@ export const SchedulesPage = () => {
             type="datetime-local"
             label="시작 시간"
             value={formData.startTime}
-            onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+            onChange={(e) => handleStartTimeChange(e.target.value)}
             required
           />
           <Input
             type="datetime-local"
-            label="종료 시간"
+            label="종료 시간 (자동 계산: 시작 시간 + 30분)"
             value={formData.endTime}
             onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
             required
+            disabled={!formData.startTime}
           />
           <Input
             type="number"
