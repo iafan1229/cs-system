@@ -15,7 +15,7 @@ export class AccessTokensService {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('EMAIL_HOST'),
       port: this.configService.get<number>('EMAIL_PORT'),
-      secure: true,
+      secure: false,
       auth: {
         user: this.configService.get<string>('EMAIL_USER'),
         pass: this.configService.get<string>('EMAIL_PASSWORD'),
@@ -41,6 +41,7 @@ export class AccessTokensService {
       data: {
         token,
         scheduleId,
+        recipientEmail: userEmail, // 상담희망자 이메일 저장
         expiresAt,
       },
     });

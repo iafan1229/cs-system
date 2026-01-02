@@ -13,6 +13,11 @@ export interface AvailableSchedulesByDate {
   [date: string]: AvailableSchedule[];
 }
 
+export interface AvailableSchedulesResponse {
+  schedules: AvailableSchedulesByDate;
+  recipientEmail?: string;
+}
+
 export interface CreateReservationDto {
   scheduleId: number;
   applicantName: string;
@@ -45,8 +50,8 @@ export interface ConsultationRecord {
 export const reservationService = {
   getAvailableSchedules: async (
     token: string
-  ): Promise<AvailableSchedulesByDate> => {
-    const response = await apiClient.get<AvailableSchedulesByDate>(
+  ): Promise<AvailableSchedulesResponse> => {
+    const response = await apiClient.get<AvailableSchedulesResponse>(
       `/public/schedules?token=${token}`
     );
     return response.data;

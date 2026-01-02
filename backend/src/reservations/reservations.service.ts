@@ -122,7 +122,10 @@ export class ReservationsService {
       return acc;
     }, {} as Record<string, any[]>);
 
-    return groupedByDate;
+    return {
+      schedules: groupedByDate,
+      recipientEmail: accessToken.recipientEmail, // 상담희망자 이메일 반환
+    };
   }
 
   async findAllBySchedule(scheduleId: number, userId: number) {

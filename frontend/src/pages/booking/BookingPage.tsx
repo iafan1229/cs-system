@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
-import { reservationService, type AvailableSchedulesByDate } from '../../services/reservationService';
+import { reservationService, type AvailableSchedulesResponse } from '../../services/reservationService';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Modal } from '../../components/Modal';
@@ -10,7 +10,8 @@ import { Loading } from '../../components/Loading';
 export const BookingPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
-  const [schedules, setSchedules] = useState<AvailableSchedulesByDate>({});
+  const [schedules, setSchedules] = useState<AvailableSchedulesResponse['schedules']>({});
+  const [recipientEmail, setRecipientEmail] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedSchedule, setSelectedSchedule] = useState<number | null>(null);
@@ -35,7 +36,15 @@ export const BookingPage = () => {
     try {
       setLoading(true);
       const data = await reservationService.getAvailableSchedules(token!);
-      setSchedules(data);
+      setSchedules(data.schedules);
+      // 상담희망자 이메일이 있으면 자동으로 채우기
+      if (data.recipientEmail) {
+        setRecipientEmail(data.recipientEmail);
+        setFormData((prev) => ({
+          ...prev,
+          applicantEmail: data.recipientEmail || '',
+        }));
+      }
     } catch (error: any) {
       setError(error.response?.data?.message || '스케줄을 불러올 수 없습니다.');
     } finally {
@@ -170,6 +179,8 @@ export const BookingPage = () => {
                 setFormData({ ...formData, applicantEmail: e.target.value })
               }
               required
+              disabled={!!recipientEmail}
+              placeholder={recipientEmail ? '이메일이 자동으로 입력되었습니다' : ''}
             />
           </form>
         </Modal>
