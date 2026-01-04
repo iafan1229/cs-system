@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ScheduleRepository } from './repositories/schedule.repository';
 import { ScheduleDomainService } from './services/schedule-domain.service';
+import { ReservationRepository } from '../reservations/repositories/reservation.repository';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { UpdateScheduleDto } from './dto/update-schedule.dto';
 import { AccessTokensService } from '../access-tokens/access-tokens.service';
@@ -14,6 +15,7 @@ export class SchedulesService {
   constructor(
     private scheduleRepository: ScheduleRepository,
     private scheduleDomainService: ScheduleDomainService,
+    private reservationRepository: ReservationRepository,
     private accessTokensService: AccessTokensService,
   ) {}
 
@@ -37,7 +39,13 @@ export class SchedulesService {
   }
 
   async findAll(userId: number, startDate?: string, endDate?: string) {
-    const where: any = { userId };
+    const where: {
+      userId: number;
+      startTime?: {
+        gte?: Date;
+        lte?: Date;
+      };
+    } = { userId };
 
     if (startDate || endDate) {
       where.startTime = {};
@@ -70,9 +78,7 @@ export class SchedulesService {
     const schedule = await this.findOne(id, userId);
 
     // 예약이 있는 경우 수정 제한
-    const reservationCount = await this.scheduleRepository.count({
-      scheduleId: id,
-    });
+    const reservationCount = await this.reservationRepository.count(id);
     if (reservationCount > 0) {
       throw new BadRequestException(
         'Cannot update schedule with existing reservations',
@@ -101,12 +107,10 @@ export class SchedulesService {
   }
 
   async remove(id: number, userId: number) {
-    const schedule = await this.findOne(id, userId);
+    await this.findOne(id, userId);
 
     // 예약이 있는 경우 삭제 제한
-    const reservationCount = await this.scheduleRepository.count({
-      scheduleId: id,
-    });
+    const reservationCount = await this.reservationRepository.count(id);
     if (reservationCount > 0) {
       throw new BadRequestException(
         'Cannot delete schedule with existing reservations',
@@ -136,4 +140,3 @@ export class SchedulesService {
     );
   }
 }
-
