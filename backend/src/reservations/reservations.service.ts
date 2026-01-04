@@ -15,7 +15,10 @@ export class ReservationsService {
     private accessTokensService: AccessTokensService,
   ) {}
 
-  async createPublic(token: string, createReservationDto: CreateReservationDto) {
+  async createPublic(
+    token: string,
+    createReservationDto: CreateReservationDto,
+  ) {
     // AccessToken 검증
     const accessToken = await this.accessTokensService.validateToken(token);
     if (!accessToken) {
@@ -23,9 +26,7 @@ export class ReservationsService {
     }
 
     // 스케줄 ID가 토큰에 연결된 스케줄 중 하나인지 확인
-    const scheduleIds = accessToken.schedules.map(
-      (ats) => ats.schedule.id,
-    );
+    const scheduleIds = accessToken.schedules.map((ats) => ats.schedule.id);
     if (!scheduleIds.includes(createReservationDto.scheduleId)) {
       throw new BadRequestException('Schedule ID does not match token');
     }
@@ -33,7 +34,17 @@ export class ReservationsService {
     // 동시성 제어: Pessimistic Lock 사용
     return this.prisma.$transaction(async (tx) => {
       // SELECT FOR UPDATE로 Schedule을 Lock
-      const schedule = await tx.$queryRaw<Array<any>>`
+      interface ScheduleRow {
+        id: number;
+        userId: number;
+        startTime: Date;
+        endTime: Date;
+        maxReservations: number;
+        createdAt: Date;
+        updatedAt: Date;
+      }
+
+      const schedule = await tx.$queryRaw<ScheduleRow[]>`
         SELECT * FROM schedules 
         WHERE id = ${createReservationDto.scheduleId} 
         FOR UPDATE
@@ -88,9 +99,7 @@ export class ReservationsService {
     }
 
     // 토큰에 연결된 모든 스케줄 ID 가져오기
-    const scheduleIds = accessToken.schedules.map(
-      (ats) => ats.schedule.id,
-    );
+    const scheduleIds = accessToken.schedules.map((ats) => ats.schedule.id);
 
     if (scheduleIds.length === 0) {
       throw new BadRequestException('No schedules found for this token');
@@ -112,27 +121,29 @@ export class ReservationsService {
 
     // 예약 가능한 슬롯만 필터링
     const availableSchedules = schedules.filter(
-      (schedule) =>
-        schedule._count.reservations < schedule.maxReservations,
+      (schedule) => schedule._count.reservations < schedule.maxReservations,
     );
 
     // 날짜별 그룹화
-    const groupedByDate = availableSchedules.reduce((acc, schedule) => {
-      const date = new Date(schedule.startTime).toISOString().split('T')[0];
-      if (!acc[date]) {
-        acc[date] = [];
-      }
-      acc[date].push({
-        id: schedule.id,
-        startTime: schedule.startTime,
-        endTime: schedule.endTime,
-        maxReservations: schedule.maxReservations,
-        currentReservations: schedule._count.reservations,
-        availableSlots:
-          schedule.maxReservations - schedule._count.reservations,
-      });
-      return acc;
-    }, {} as Record<string, any[]>);
+    const groupedByDate = availableSchedules.reduce(
+      (acc, schedule) => {
+        const date = new Date(schedule.startTime).toISOString().split('T')[0];
+        if (!acc[date]) {
+          acc[date] = [];
+        }
+        acc[date].push({
+          id: schedule.id,
+          startTime: schedule.startTime,
+          endTime: schedule.endTime,
+          maxReservations: schedule.maxReservations,
+          currentReservations: schedule._count.reservations,
+          availableSlots:
+            schedule.maxReservations - schedule._count.reservations,
+        });
+        return acc;
+      },
+      {} as Record<string, any[]>,
+    );
 
     return {
       schedules: groupedByDate,
@@ -147,9 +158,7 @@ export class ReservationsService {
     });
 
     if (!schedule) {
-      throw new NotFoundException(
-        `Schedule with ID ${scheduleId} not found`,
-      );
+      throw new NotFoundException(`Schedule with ID ${scheduleId} not found`);
     }
 
     return this.prisma.reservation.findMany({

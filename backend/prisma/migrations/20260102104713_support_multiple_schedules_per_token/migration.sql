@@ -38,3 +38,4 @@ DROP INDEX IF EXISTS "access_tokens_scheduleId_idx";
 -- AlterTable
 ALTER TABLE "access_tokens" DROP COLUMN "scheduleId";
 
+
