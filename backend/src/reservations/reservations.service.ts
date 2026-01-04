@@ -6,12 +6,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessTokensService } from '../access-tokens/access-tokens.service';
+import { ReservationRepository } from './repositories/reservation.repository';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 
 @Injectable()
 export class ReservationsService {
   constructor(
     private prisma: PrismaService,
+    private reservationRepository: ReservationRepository,
     private accessTokensService: AccessTokensService,
   ) {}
 
@@ -59,9 +61,10 @@ export class ReservationsService {
       const scheduleData = schedule[0];
 
       // 현재 예약 수 확인
-      const currentReservations = await tx.reservation.count({
-        where: { scheduleId: createReservationDto.scheduleId },
-      });
+      const currentReservations = await this.reservationRepository.count(
+        createReservationDto.scheduleId,
+        tx,
+      );
 
       // 정원 초과 검증
       if (currentReservations >= scheduleData.maxReservations) {
@@ -69,23 +72,10 @@ export class ReservationsService {
       }
 
       // 예약 생성
-      const reservation = await tx.reservation.create({
-        data: {
-          scheduleId: createReservationDto.scheduleId,
-          applicantName: createReservationDto.applicantName,
-          applicantEmail: createReservationDto.applicantEmail,
-          status: 'confirmed',
-        },
-        include: {
-          schedule: {
-            select: {
-              id: true,
-              startTime: true,
-              endTime: true,
-            },
-          },
-        },
-      });
+      const reservation = await this.reservationRepository.create(
+        createReservationDto,
+        tx,
+      );
 
       return reservation;
     });
@@ -161,33 +151,18 @@ export class ReservationsService {
       throw new NotFoundException(`Schedule with ID ${scheduleId} not found`);
     }
 
-    return this.prisma.reservation.findMany({
-      where: { scheduleId },
-      include: {
-        consultationRecord: true,
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    });
+    return this.reservationRepository.findBySchedule(scheduleId);
   }
 
   async findOne(id: number, userId: number) {
-    const reservation = await this.prisma.reservation.findUnique({
-      where: { id },
-      include: {
-        schedule: {
-          select: {
-            id: true,
-            userId: true,
-          },
-        },
-        consultationRecord: true,
-      },
-    });
+    const reservation = await this.reservationRepository.findById(id);
 
     if (!reservation) {
       throw new NotFoundException(`Reservation with ID ${id} not found`);
+    }
+
+    if (!reservation.schedule) {
+      throw new NotFoundException('Schedule not found for this reservation');
     }
 
     if (reservation.schedule.userId !== userId) {

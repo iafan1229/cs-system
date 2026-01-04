@@ -1,4 +1,4 @@
-import apiClient from './api';
+import apiClient from "./api";
 
 export interface AvailableSchedule {
   id: number;
@@ -57,7 +57,7 @@ export const reservationService = {
     return response.data;
   },
 
-  createPublic: async (
+  create: async (
     token: string,
     data: CreateReservationDto
   ): Promise<Reservation> => {
@@ -66,6 +66,13 @@ export const reservationService = {
       data
     );
     return response.data;
+  },
+
+  createPublic: async (
+    token: string,
+    data: CreateReservationDto
+  ): Promise<Reservation> => {
+    return reservationService.create(token, data);
   },
 
   getBySchedule: async (scheduleId: number): Promise<Reservation[]> => {
@@ -82,4 +89,3 @@ export const reservationService = {
     return response.data;
   },
 };
-

@@ -61,9 +61,36 @@ npm install
 npm run dev
 ```
 
+## 테스트
+
+### 단위 테스트 실행
+
+```bash
+cd backend
+npm test
+```
+
+### E2E 테스트 실행
+
+```bash
+cd backend
+npm run test:e2e
+```
+
+### 테스트 커버리지 확인
+
+```bash
+cd backend
+npm run test:cov
+```
+
 ## 개발 상태
 
-현재 프로젝트 초기 설정 단계입니다.
+- ✅ 프로젝트 설정 및 인프라 구축
+- ✅ 데이터베이스 설계 및 구현
+- ✅ Backend API 개발
+- ✅ Frontend 개발
+- ✅ 통합 및 테스트 (단위 테스트, E2E 테스트, 동시성 테스트)
 
 ## 문서
 

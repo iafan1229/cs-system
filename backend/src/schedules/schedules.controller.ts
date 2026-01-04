@@ -37,11 +37,7 @@ export class SchedulesController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    return this.schedulesService.findAll(
-      req.user.id,
-      startDate,
-      endDate,
-    );
+    return this.schedulesService.findAll(req.user.id, startDate, endDate);
   }
 
   @Get(':id')
@@ -78,11 +74,7 @@ export class SchedulesController {
     if (!email || !email.includes('@')) {
       throw new BadRequestException('상담희망자 이메일은 필수입니다.');
     }
-    return this.schedulesService.generateLink(
-      id,
-      req.user.id,
-      email,
-    );
+    return this.schedulesService.generateLink(id, req.user.id, email);
   }
 
   @Post('generate-link-batch')
