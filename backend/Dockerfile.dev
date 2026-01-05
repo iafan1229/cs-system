@@ -2,13 +2,32 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# package.json만 먼저 복사하여 의존성 설치 (캐시 최적화)
 COPY package*.json ./
-
 RUN npm install
 
+# 나머지 파일 복사
 COPY . .
+
+# Prisma Client 생성 (빌드 시에도 생성)
+RUN npm run db:generate
 
 EXPOSE 3000
 
-CMD ["npm", "run", "start:dev"]
+# entrypoint 스크립트 생성 및 실행
+RUN echo '#!/bin/sh' > /entrypoint.sh && \
+    echo 'set -e' >> /entrypoint.sh && \
+    echo 'cd /app' >> /entrypoint.sh && \
+    echo 'echo "Installing dependencies..."' >> /entrypoint.sh && \
+    echo 'npm install' >> /entrypoint.sh && \
+    echo 'echo "Generating Prisma Client..."' >> /entrypoint.sh && \
+    echo 'npm run db:generate' >> /entrypoint.sh && \
+    echo 'echo "Running migrations..."' >> /entrypoint.sh && \
+    echo 'npm run db:migrate:deploy || true' >> /entrypoint.sh && \
+    echo 'echo "Running seed script..."' >> /entrypoint.sh && \
+    echo 'npm run seed || true' >> /entrypoint.sh && \
+    echo 'echo "Starting server..."' >> /entrypoint.sh && \
+    echo 'exec npm run start:dev' >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
 
+ENTRYPOINT ["/entrypoint.sh"]
