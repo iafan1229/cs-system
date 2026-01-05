@@ -52,7 +52,17 @@ services:
         condition: service_healthy
     networks:
       - cs-system-network
-    command: npm run start:dev
+    entrypoint: ["sh", "-c"]
+    command: >
+      if [ ! -d "node_modules" ] || [ "package.json" -nt "node_modules" ]; then
+        echo "Installing dependencies...";
+        npm install;
+      fi &&
+      echo "Generating Prisma Client...";
+      npm run db:generate &&
+      echo "Running seed script...";
+      npm run seed || true &&
+      npm run start:dev
 
   frontend:
     build:
@@ -68,7 +78,13 @@ services:
       - VITE_API_URL=http://localhost:3000
     networks:
       - cs-system-network
-    command: npm run dev -- --host
+    entrypoint: ["sh", "-c"]
+    command: >
+      if [ ! -d "node_modules" ] || [ "package.json" -nt "node_modules" ]; then
+        echo "Installing dependencies...";
+        npm install;
+      fi &&
+      npm run dev -- --host
 
 networks:
   cs-system-network:
