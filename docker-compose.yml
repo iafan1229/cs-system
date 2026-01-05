@@ -20,55 +20,55 @@ services:
       timeout: 5s
       retries: 5
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
-    container_name: cs-system-backend
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-    environment:
-      - NODE_ENV=development
-      # 필수: 데이터베이스 연결 URL
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-consultation_system}
-      # 권장: JWT 설정
-      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-in-production}
-      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
-      # 선택: 이메일 설정 (없으면 콘솔에 출력)
-      - EMAIL_HOST=${EMAIL_HOST:-}
-      - EMAIL_PORT=${EMAIL_PORT:-587}
-      - EMAIL_USER=${EMAIL_USER:-}
-      - EMAIL_PASSWORD=${EMAIL_PASSWORD:-}
-      - EMAIL_FROM=${EMAIL_FROM:-noreply@example.com}
-      # 선택: 프론트엔드 URL
-      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
-      # 선택: 포트
-      - PORT=${PORT:-3000}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - cs-system-network
-    command: npm run start:dev
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile.dev
+  #   container_name: cs-system-backend
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./backend:/app
+  #     - /app/node_modules
+  #   environment:
+  #     - NODE_ENV=development
+  #     # 필수: 데이터베이스 연결 URL
+  #     - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-consultation_system}
+  #     # 권장: JWT 설정
+  #     - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-in-production}
+  #     - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+  #     # 선택: 이메일 설정 (없으면 콘솔에 출력)
+  #     - EMAIL_HOST=${EMAIL_HOST:-}
+  #     - EMAIL_PORT=${EMAIL_PORT:-587}
+  #     - EMAIL_USER=${EMAIL_USER:-}
+  #     - EMAIL_PASSWORD=${EMAIL_PASSWORD:-}
+  #     - EMAIL_FROM=${EMAIL_FROM:-noreply@example.com}
+  #     # 선택: 프론트엔드 URL
+  #     - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
+  #     # 선택: 포트
+  #     - PORT=${PORT:-3000}
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - cs-system-network
+  #   command: npm run start:dev
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-    container_name: cs-system-frontend
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_URL=http://localhost:3000
-    networks:
-      - cs-system-network
-    command: npm run dev
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile.dev
+  #   container_name: cs-system-frontend
+  #   ports:
+  #     - "5173:5173"
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /app/node_modules
+  #   environment:
+  #     - VITE_API_URL=http://localhost:3000
+  #   networks:
+  #     - cs-system-network
+  #   command: npm run dev -- --host
 
 networks:
   cs-system-network:

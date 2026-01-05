@@ -15,6 +15,8 @@ if (!databaseUrl) {
 }
 
 // Prisma 7에서는 adapter 필요
+// databaseUrl은 위에서 체크했으므로 string 타입 보장됨
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
 const pool = new Pool({ connectionString: databaseUrl });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
@@ -63,4 +65,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-
