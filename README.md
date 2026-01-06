@@ -8,7 +8,7 @@
 
 - [프로젝트 설치법](https://pouncing-jaguar-da7.notion.site/2df5d4f5ac7a80ea9aadc39bb2ee9ddc)
 - [스크린샷 및 사용법](https://pouncing-jaguar-da7.notion.site/2df5d4f5ac7a80bdb85ddd314c9f3171)
-- [설계 문서](https://pouncing-jaguar-da7.notion.site/2df5d4f5ac7a80bdb85ddd314c9f3171)
+- [설계 문서](https://pouncing-jaguar-da7.notion.site/2e05d4f5ac7a81c69e15eabde3ef8777)
 
 ## 기술 스택
 
